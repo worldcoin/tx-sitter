@@ -1,0 +1,10 @@
+[package]
+name = "tx-sitter"
+version = "0.1.0"
+edition = "2021"
+authors = ["Worldcoin Crypto Team"]
+description = "Service which signs and reliably submits blockchain transactions"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
