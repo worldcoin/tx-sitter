@@ -1,3 +1,49 @@
+#![warn(clippy::all)]
+
+use clap::{Parser, Subcommand};
+use cli_batteries::version;
+use tracing::info;
+use sqlx::{SqliteConnection, Connection};
+use thiserror::Error;
+
+#[derive(Parser)]
+struct Options {
+    #[command(subcommand)]
+    command: Commands,
+
+    #[arg(env="SITTER_CONNECTION_STRING")]
+    connection_string: String,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    // start the api, connect to upstreams, the primary mode
+    Daemon,
+}
+
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("cannot connect to database")]
+    Connect(#[from] sqlx::Error),
+}
+
+async fn daemon(_conn: SqliteConnection) -> Result<(), AppError> {
+    info!("starting daemon");
+    Ok(())
+}
+
+async fn app(options: Options) -> Result<(), AppError> {
+    // confirm we can use the requested database
+    let conn = SqliteConnection::connect(&options.connection_string).await.map_err(AppError::Connect)?;
+
+    match options.command {
+        Commands::Daemon => {
+            daemon(conn).await?
+        }
+    }
+    Ok(())
+}
+
 fn main() {
-    println!("Hello, world!");
+    cli_batteries::run(version!(), app);
 }
