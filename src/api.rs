@@ -1,9 +1,6 @@
 use std::net::SocketAddr;
 
-use jsonrpsee::server::{
-    RpcModule,
-    ServerBuilder,
-};
+use jsonrpsee::server::{RpcModule, ServerBuilder};
 use thiserror::Error;
 use tracing::info;
 
@@ -27,7 +24,9 @@ pub async fn run_server() -> Result<(), ServerError> {
         .map_err(ServerError::BindError)?;
 
     let mut module = RpcModule::new(());
-    module.register_method("sitter_hi", |_, _| Ok("hi")).unwrap();
+    module
+        .register_method("sitter_hi", |_, _| Ok("hi"))
+        .unwrap();
 
     let handle = server.start(module)?;
     info!("api started at 127.0.0.1:9123");

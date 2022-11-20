@@ -1,0 +1,62 @@
+name: "Build & Test"
+
+on:
+  push
+
+env:
+  RUST_VERSION: "1.65"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: cache-v1
+      - name: cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: install cargo sort
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-sort
+          version: 1.0.9
+      - name: cargo sort
+        run: cargo sort --check --check-format
+      - name: clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --locked --all-features --all-targets
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: cache-v1
+      - name: build tests
+        run: cargo test --locked --all-features --all-targets --no-run
+      - name: run tests
+        run: cargo test --locked --all-features --all-targets -- --nocapture
