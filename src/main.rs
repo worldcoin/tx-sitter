@@ -1,5 +1,7 @@
 #![warn(clippy::all)]
 
+mod api;
+
 use clap::{Parser, Subcommand};
 use cli_batteries::version;
 use tracing::info;
@@ -25,10 +27,17 @@ enum Commands {
 enum AppError {
     #[error("cannot connect to database")]
     Connect(#[from] sqlx::Error),
+
+    #[error("cannot start server")]
+    StartServer(#[from] api::ServerError),
 }
 
 async fn daemon(_conn: SqliteConnection) -> Result<(), AppError> {
     info!("starting daemon");
+    api::run_server().await.map_err(AppError::StartServer)?;
+
+    cli_batteries::await_shutdown().await;
+
     Ok(())
 }
 
