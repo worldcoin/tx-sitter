@@ -1,10 +1,10 @@
 #![warn(clippy::all)]
 
 mod api;
+mod db;
 
 use clap::{Parser, Subcommand};
 use cli_batteries::version;
-use sqlx::{Connection, SqliteConnection};
 use thiserror::Error;
 use tracing::info;
 
@@ -32,7 +32,7 @@ enum AppError {
     StartServer(#[from] api::ServerError),
 }
 
-async fn daemon(_conn: SqliteConnection) -> Result<(), AppError> {
+async fn daemon(_db: db::Database) -> Result<(), AppError> {
     info!("starting daemon");
     api::run_server().await.map_err(AppError::StartServer)?;
 
@@ -42,13 +42,14 @@ async fn daemon(_conn: SqliteConnection) -> Result<(), AppError> {
 }
 
 async fn app(options: Options) -> Result<(), AppError> {
+    //
     // confirm we can use the requested database
-    let conn = SqliteConnection::connect(&options.connection_string)
+    let database = db::Database::connect(&options.connection_string)
         .await
         .map_err(AppError::Connect)?;
 
     match options.command {
-        Commands::Daemon => daemon(conn).await?,
+        Commands::Daemon => daemon(database).await?,
     }
     Ok(())
 }

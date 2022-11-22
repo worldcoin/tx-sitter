@@ -38,7 +38,7 @@ async fn read_until_match<R: tokio::io::AsyncRead + std::marker::Unpin>(read: R,
 async fn starts_api() {
     let cmd_path = assert_cmd::cargo::cargo_bin("tx-sitter");
     let mut child = tokio::process::Command::new(cmd_path)
-        .arg(":memory:")
+        .arg("sqlite://:memory:")
         .arg("daemon")
         .stderr(Stdio::piped())
         .kill_on_drop(true) // caveat: tokio promises "best-effort" to reap this zombie
