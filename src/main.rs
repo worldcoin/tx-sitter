@@ -6,7 +6,7 @@ mod db;
 use clap::{Parser, Subcommand};
 use cli_batteries::version;
 use thiserror::Error;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Parser)]
 struct Options {
@@ -33,7 +33,6 @@ enum AppError {
 }
 
 async fn daemon(_db: db::Database) -> Result<(), AppError> {
-    info!("starting daemon");
     api::run_server().await.map_err(AppError::StartServer)?;
 
     cli_batteries::await_shutdown().await;
@@ -42,11 +41,26 @@ async fn daemon(_db: db::Database) -> Result<(), AppError> {
 }
 
 async fn app(options: Options) -> Result<(), AppError> {
-    //
-    // confirm we can use the requested database
+
     let database = db::Database::connect(&options.connection_string)
         .await
         .map_err(AppError::Connect)?;
+
+    use db::MigrationStatus::*;
+    match database.migration_status().await? {
+        Dirty => {
+            error!("database is is an inconsistent migration state");
+            return Ok(());
+        },
+        Empty | Behind => {
+            database.migrate().await?;
+        },
+        Current => {},
+        Ahead => {
+            error!("tx-sitter must be updated to use this database");
+            return Ok(());
+        }
+    };
 
     match options.command {
         Commands::Daemon => daemon(database).await?,
