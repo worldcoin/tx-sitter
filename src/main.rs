@@ -41,7 +41,6 @@ async fn daemon(_db: db::Database) -> Result<(), AppError> {
 }
 
 async fn app(options: Options) -> Result<(), AppError> {
-
     let database = db::Database::connect(&options.connection_string)
         .await
         .map_err(AppError::Connect)?;
@@ -51,11 +50,11 @@ async fn app(options: Options) -> Result<(), AppError> {
         Dirty => {
             error!("database is is an inconsistent migration state");
             return Ok(());
-        },
+        }
         Empty | Behind => {
             database.migrate().await?;
-        },
-        Current => {},
+        }
+        Current => {}
         Ahead => {
             error!("tx-sitter must be updated to use this database");
             return Ok(());

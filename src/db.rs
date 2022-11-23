@@ -1,7 +1,7 @@
-use sqlx::Pool;
-use sqlx::Any;
+use sqlx::migrate::{Migrate, MigrateDatabase, Migrator};
 use sqlx::pool::PoolOptions;
-use sqlx::migrate::{Migrator, MigrateDatabase, Migrate};
+use sqlx::Any;
+use sqlx::Pool;
 use tracing::info;
 
 static MIGRATOR: Migrator = sqlx::migrate!("schemas/database");
@@ -12,10 +12,10 @@ pub struct Database {
 
 pub enum MigrationStatus {
     Empty,
-    Dirty,    // the database has an unexpected schema
-    Behind,   // the database is out of date
-    Current,  // nothing needs to be done
-    Ahead,    // the binary is out of date
+    Dirty,   // the database has an unexpected schema
+    Behind,  // the database is out of date
+    Current, // nothing needs to be done
+    Ahead,   // the binary is out of date
 }
 
 impl Database {
@@ -31,15 +31,11 @@ impl Database {
 
         info!("created fresh");
 
-        let pool: Pool<Any> = PoolOptions::new()
-            .connect(connection_string)
-            .await?;
+        let pool: Pool<Any> = PoolOptions::new().connect(connection_string).await?;
 
         info!("pool connect");
 
-        Ok(Database {
-            pool: pool
-        })
+        Ok(Database { pool: pool })
     }
 
     pub async fn migration_status(&self) -> Result<MigrationStatus, sqlx::Error> {
@@ -47,8 +43,7 @@ impl Database {
 
         let binary_version = MIGRATOR.migrations.last().unwrap().version;
 
-        let mut handle = self.pool
-            .acquire().await?;
+        let mut handle = self.pool.acquire().await?;
 
         // it's pretty weird that migration_status() mutates
         // the database, instead this should check whether
@@ -59,7 +54,8 @@ impl Database {
         // `list_applied_migrations`, probably?
         #[allow(deprecated)]
         let (database_version, dirty) = handle
-            .version().await?  // from sqlx::migrate::Migrate
+            .version()
+            .await? // from sqlx::migrate::Migrate
             .unwrap_or((0, false));
 
         if database_version == 0 {
@@ -75,7 +71,7 @@ impl Database {
             return Ok(Current);
         }
 
-        return Ok(Ahead)
+        return Ok(Ahead);
     }
 
     pub async fn migrate(&self) -> Result<(), sqlx::Error> {

@@ -29,7 +29,7 @@ pub async fn run_server() -> Result<(), ServerError> {
         .unwrap();
 
     let handle = server.start(module)?;
-    info!(addr="127.0.0.1:9123", "api started");
+    info!(addr = "127.0.0.1:9123", "api started");
 
     // - the server will shutdown once this handle is dropped
     // - handle.stopped() blocks until someone calls handle.stop()
