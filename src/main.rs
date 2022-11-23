@@ -4,16 +4,16 @@ mod api;
 
 use clap::{Parser, Subcommand};
 use cli_batteries::version;
-use tracing::info;
-use sqlx::{SqliteConnection, Connection};
+use sqlx::{Connection, SqliteConnection};
 use thiserror::Error;
+use tracing::info;
 
 #[derive(Parser)]
 struct Options {
     #[command(subcommand)]
     command: Commands,
 
-    #[arg(env="SITTER_CONNECTION_STRING")]
+    #[arg(env = "SITTER_CONNECTION_STRING")]
     connection_string: String,
 }
 
@@ -43,12 +43,12 @@ async fn daemon(_conn: SqliteConnection) -> Result<(), AppError> {
 
 async fn app(options: Options) -> Result<(), AppError> {
     // confirm we can use the requested database
-    let conn = SqliteConnection::connect(&options.connection_string).await.map_err(AppError::Connect)?;
+    let conn = SqliteConnection::connect(&options.connection_string)
+        .await
+        .map_err(AppError::Connect)?;
 
     match options.command {
-        Commands::Daemon => {
-            daemon(conn).await?
-        }
+        Commands::Daemon => daemon(conn).await?,
     }
     Ok(())
 }
