@@ -6,7 +6,7 @@ mod db;
 use clap::{Parser, Subcommand};
 use cli_batteries::version;
 use thiserror::Error;
-use tracing::{error, info};
+use tracing::error;
 
 #[derive(Parser)]
 struct Options {

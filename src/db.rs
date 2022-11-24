@@ -35,7 +35,7 @@ impl Database {
 
         info!("pool connect");
 
-        Ok(Database { pool: pool })
+        Ok(Database { pool })
     }
 
     pub async fn migration_status(&self) -> Result<MigrationStatus, sqlx::Error> {
@@ -71,7 +71,7 @@ impl Database {
             return Ok(Current);
         }
 
-        return Ok(Ahead);
+        Ok(Ahead)
     }
 
     pub async fn migrate(&self) -> Result<(), sqlx::Error> {
