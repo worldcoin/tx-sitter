@@ -1,41 +1,107 @@
 use std::net::SocketAddr;
 
-use jsonrpsee::server::{RpcModule, ServerBuilder};
 use thiserror::Error;
 use tracing::info;
+
+use tonic::{transport::Server, Request, Response, Status};
+
+use crate::db::Database;
+use crate::proto::sitter::{
+    self,
+    sitter_server::{Sitter, SitterServer},
+    LookupTransactionReply, SendTransactionReply, SendTransactionRequest, StatusReply,
+    StatusRequest, StatusTransactionReply, Txid,
+};
+use crate::types::TransactionRequest;
+
+pub struct SitterAPI {
+    #[allow(dead_code)]
+    db: Database,
+}
+
+#[tonic::async_trait]
+impl Sitter for SitterAPI {
+    async fn status(
+        &self,
+        request: Request<StatusRequest>,
+    ) -> Result<Response<StatusReply>, Status> {
+        info!("received status request: {:?}", request);
+        Ok(Response::new(StatusReply {
+            status: sitter::Status::Normal.into(),
+            active_upstreams: 0,
+            pending_transactions: 0,
+        }))
+    }
+
+    async fn send_transaction(
+        &self,
+        request: Request<SendTransactionRequest>,
+    ) -> Result<Response<SendTransactionReply>, Status> {
+        info!("received send transaction request: {:?}", request);
+
+        let req = request.into_inner(); // consumes self, throws metadata away
+        let _req = TransactionRequest::try_from(req).map_err(|e| {
+            Status::invalid_argument(format!("could not parse transaction request: {}", e))
+        })?;
+
+        // I.  check whether req.id already exists in the database
+        // II. validate the transaction:
+        //   (a) does the requested sender exist?
+        //   (b) does the requested sender have enough money?
+        //   (c) if gas_limit was not specified return
+        //       Status::unimplemented
+        // III. hash the request to find the txid
+        // IV.  save the transaction to our database
+        // V.   return a successful response
+
+        Err(Status::unimplemented("unimplemented"))
+        // Ok(Response::new(SendTransactionReply {}))
+    }
+
+    async fn status_transaction(
+        &self,
+        request: Request<Txid>,
+    ) -> Result<Response<StatusTransactionReply>, Status> {
+        info!("received status transaction request: {:?}", request);
+
+        Err(Status::unimplemented("unimplemented"))
+    }
+
+    async fn lookup_transaction(
+        &self,
+        request: Request<Txid>,
+    ) -> Result<Response<LookupTransactionReply>, Status> {
+        info!("received lookup transaction request: {:?}", request);
+
+        Err(Status::unimplemented("unimplemented"))
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error("bad address")]
     BadAddress(#[from] std::net::AddrParseError),
 
-    #[error("failed to bind")]
-    BindError(#[from] jsonrpsee::core::Error),
+    #[error("unknown tonic error")]
+    TonicError(#[from] tonic::transport::Error),
 }
 
-pub async fn run_server() -> Result<(), ServerError> {
+pub async fn run_server(db: Database) -> Result<(), ServerError> {
     let addr = "127.0.0.1:9123"
         .parse::<SocketAddr>()
         .map_err(ServerError::BadAddress)?;
 
-    let server = ServerBuilder::default()
-        .build(addr)
-        .await
-        .map_err(ServerError::BindError)?;
+    let api = SitterAPI { db };
 
-    let mut module = RpcModule::new(());
-    module
-        .register_method("sitter_hi", |_, _| Ok("hi"))
-        .unwrap();
+    tokio::spawn(async move {
+        Server::builder()
+            .add_service(SitterServer::new(api))
+            .serve(addr)
+            .await
+            .unwrap();
+    });
 
-    let handle = server.start(module)?;
     info!(addr = "127.0.0.1:9123", "api started");
-
-    // - the server will shutdown once this handle is dropped
-    // - handle.stopped() blocks until someone calls handle.stop()
-    // so this spawn keeps the server running until the tokio
-    // runtime is dropped
-    tokio::spawn(handle.stopped());
 
     Ok(())
 }

@@ -1,0 +1,101 @@
+syntax = "proto3";
+package sitter_v1;
+
+// authentication is handled by passing a metadata value
+
+service Sitter {
+	rpc Status (StatusRequest) returns (StatusReply);
+	rpc SendTransaction (SendTransactionRequest) returns (SendTransactionReply);
+	rpc StatusTransaction (Txid) returns (StatusTransactionReply);
+	rpc LookupTransaction (Txid) returns (LookupTransactionReply);
+}
+
+enum Status {
+	// TODO: which other failure modes might there be?
+	STATUS_NORMAL = 0;
+	STATUS_STUCK = 1;  // there is pending work but forward progress is not being made
+}
+message StatusRequest { }
+message StatusReply {
+	Status status = 1;
+	int32 active_upstreams = 2;
+	int32 pending_transactions = 3;
+}
+
+
+message U256 {
+	oneof u256 {
+		bytes little_endian = 1;   // must be 32 bytes
+		bytes big_endian = 2;      // must be 32 bytes
+		string hex_encoded = 3;    // with or without leading "0x"
+		string decimal_encoded = 4;
+	}
+}
+message SendTransactionRequest {
+	uint32 chainId = 1;
+	oneof sender {
+		string address = 2;  // hard code the address to send from
+		string named = 3;   // the admin can change which addr this refers to
+	}
+
+	message TxCall {
+		string receiver = 1;  // the address to send to
+		U256 value = 2;
+		bytes calldata = 3;
+	}
+
+	message TxDeploy {
+		U256 value = 1;
+		bytes initcode = 2;
+	}
+
+	oneof transaction {
+		TxCall call = 4;
+		TxDeploy deploy = 5;
+	}
+
+	// enables idempotent sends, clients must not use multiple ids for the same
+	// transaction, even if the client reoobts
+	optional bytes id = 6;
+
+	// how much gas should the transaction spend before it REVERTs? the client is in
+	// the best position to estimate this but if this value is not provided tx-sitter
+	// will make a best-guess
+	optional U256 gas_limit = 7;
+}
+message SendTransactionReply {
+	// this is not the eth transaction hash, the transaction might not have been
+	// decided yet.
+	bytes txid = 1;
+
+	uint32 pending_transactions = 2;   // the number of transactions for this sender
+	                                   // which have not yet been confirmed
+
+	// FUTURE: some kind of back-pressure data, like a recommended wait time before
+	//         sending the next transaction. Or, if the queue is very long, an error
+	//         with the timeout period.
+}
+
+message Txid {
+	bytes txid = 1;
+}
+message LookupTransactionReply {
+	string sender = 1;
+	string receiver = 2;
+	int32 value = 3;
+	bytes calldata = 4;
+}
+message StatusTransactionReply {
+	string sender = 1;
+
+	// how many transactions must be mined before this transaction will be the next
+	// transaction to be mined?
+	uint32 position_in_queue = 2;
+
+	// these are null until the transaction is sent to the mempool, which may be a
+	// while, if we are waiting for earlier transactions to be mined
+	uint64 eth_tx_nonce = 6;
+	bytes eth_tx_hash = 7;
+
+	// TODO: eth receipt data
+}

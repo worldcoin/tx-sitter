@@ -8,15 +8,20 @@ description = "Service which signs and reliably submits blockchain transactions"
 
 [build-dependencies]
 cli-batteries = "0.4.0"
+tonic-build = "0.8"
 
 [dependencies]
 clap = { version = "4.0.26", features = ["derive", "env"] }
 cli-batteries = { version = "0.4.0", features = ["signals", "mock-shutdown"] }
-jsonrpsee = { version = "0.16.0", features = ["server", "client"] }
+ethers = "1.0.2"
+ethers-core = "1.0.2"
+prost = "0.11"
+rustc-hex = "2.1.0"
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "sqlite",
 "any", "migrate"] }
 thiserror = "1.0.37"
 tokio = { version = "1.21.2", features = ["process", "io-util", "time"] }
+tonic = "0.8"
 tracing = "0.1.37"
 
 [dev-dependencies]
