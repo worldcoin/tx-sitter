@@ -1,0 +1,150 @@
+syntax = "proto3";
+package sitter_admin.v1;
+
+/*
+Authentication:
+- authentication is handled by passing a metadata value
+- all these requests return UNAUTHENTICATED(16) if the value is not passed
+- and PERMISSION_DENIED(7) if the provided value is incorrect
+
+Object Creation:
+- all Create*Request methods accept a name which will be used to identify the newly
+  created object in future requests.
+- they return error ALREADY_EXISTS(6) if this name has
+  already been used.
+
+Errors:
+- all rpc calls return `tonic::Status { code: Code, message: String, details: Bytes }`.
+  If the server returns an error (a non-zero status code) it may attach a protobuf to
+  the `details` field.
+- All the `*Sender rpcs use the `SenderError` protobuf.
+- All the `*Upstream` rpcs use the `UpstreamError` protobuf.
+*/
+
+service SitterAdmin {
+	// API Keys are used to authenticate against the service defined in ./sitter.proto
+	// FUTURE: it might be better to use JWTs or client certs?
+	rpc CreateAPIKey (CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
+	rpc RevokeAPIKey (RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse);
+
+	// a sender represents a private key; in the future it might represent a group
+	// of private keys. Each sender is bound to a single chainID; there is no way to
+	// use the same private key across multiple chains.
+	rpc CreateSender (CreateSenderRequest) returns (Sender);
+	rpc PauseSender (SenderName) returns (PauseSenderResponse);
+	rpc ResumeSender (SenderName) returns (ResumeSenderResponse);
+	rpc StatusSender (SenderName) returns (StatusSenderResponse);
+
+	// an upstream is a JSON-RPC endpoint, 
+	rpc CreateUpstream (CreateUpstreamRequest) returns (CreateUpstreamResponse);
+	rpc DropUpstream (UpstreamName) returns (DropUpstreamResponse);
+	rpc StatusUpstream (UpstreamName) returns (StatusUpstreamResponse);
+
+	// FUTURE: methods for manually dropping or escalating stuck transactions
+	// FUTURE: methods for querying all transactions
+	//         e.g. how much gas has sender x consumed in the last day?
+	// FUTURE: methods for applying per-sender policies
+	//         e.g. sender "hubble" can only send to these addresses
+	// FUTURE: methods for setting per-api-key spend limits
+}
+
+
+message CreateAPIKeyRequest {
+	string name = 1;
+}
+message CreateAPIKeyResponse {
+	// a randomly generated key, there is no way to view this key again
+	string apiKey = 1;
+}
+message RevokeAPIKeyRequest {
+	string name = 1;
+}
+message RevokeAPIKeyResponse {
+	// might return NOT_FOUND(5) if no key with this name exists
+}
+
+
+message SenderName {
+	string name = 1;
+}
+enum SenderKind {
+	SENDER_INSECURE = 0;  // stored unencrypted in the local database, for testing only
+	SENDER_AWS_KMS = 1;   // stored in AWS KMS
+}
+message CreateSenderRequest {
+	SenderKind kind = 1;
+	int32 chainid = 2;
+
+	// returns status code ALREADY_EXISTS(6) if this name has already been used
+	string name = 3;  // this becomes sitter.SendTransactionRequest.sender
+}
+message Sender {
+	SenderKind kind = 1;
+	int32 chainid = 2;
+	string name = 3;
+
+	string addr = 4;  // the eth address corresponding to this private key
+}
+message PauseSenderResponse {}
+message ResumeSenderResponse {}
+message StatusSenderResponse {
+	Sender sender = 1;
+	bool paused = 2;
+
+	uint32 finalized_nonce = 3;  // the nonce in the last seen finalized block
+	uint32 confirmed_nonce = 4;  // the nonce in the last seen confirmed block
+	uint32 submitted_nonce = 5;  // the nonce of the last tx we sent to the mempool
+
+	// these are decimal-encoded 256-bit integers. The decimal encoding adds some
+	// overhead but also enhances human-readability
+	string finalized_balance = 6;
+	string confirmed_balance = 7;
+
+	// pending_transactions are a superset of queued_transactions
+	uint32 pending_transactions = 8;  // how many txns have not been confirmed
+	uint32 queued_transactions = 9;   // how many txns have not been sent to the mempool
+}
+enum SenderErrorCode {
+	// this enum is passed in the `details` field of the Status response
+	// to StatusSender
+	SENDER_ERROR_NO_ERROR = 0;
+	SENDER_ERROR_NO_UPSTREAM = 1;  // there is no upstream which matches this sender's chainid
+}
+message SenderError {
+	SenderErrorCode code = 1;
+}
+
+
+message CreateUpstreamRequest {
+	string name = 1;
+	string url = 2;
+	string chainid = 3;  // an error is returned unless this matches the reuslt of eth_chainId
+}
+message CreateUpstreamResponse { }
+enum UpstreamErrorCode {
+	// this enum is passed in the `details` field of the Status response
+	UPSTREAM_ERROR_NO_ERROR = 0;
+	UPSTREAM_ERROR_INCORRECT_CHAINID = 1;
+	UPSTREAM_ERROR_BAD_URL = 2;  // the url does not parse, or uses an unknown schema
+	UPSTREAM_ERROR_CANNOT_CONNECT = 3;  // the upstream provider did not respond
+	UPSTREAM_ERROR_FELL_BEHIND = 4;  // this upstream is less current than other
+	                                 // upstrems for this chainid
+}
+message UpstreamError {
+	UpstreamErrorCode code = 1;
+}
+
+
+message UpstreamName {
+	string name = 1;
+}
+message DropUpstreamResponse {}
+message StatusUpstreamResponse {
+	string name = 1;
+	uint64 last_message = 2;  // the timestamp of the last time we received a
+	                          // successful response from this upstream
+	uint64 latest_block_number = 3; // the newest block this upstream has given us
+
+	bool is_connected = 4;  // do we currently have a connection to this upstream?
+	uint64 backoff_delay = 5;  // how many ms until we reattempt to connect
+}

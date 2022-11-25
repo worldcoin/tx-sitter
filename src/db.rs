@@ -79,4 +79,8 @@ impl Database {
 
         Ok(())
     }
+
+    pub async fn has_transaction_id(&self) -> Result<bool, sqlx::Error> {
+        Ok(false)
+    }
 }
