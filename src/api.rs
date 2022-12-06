@@ -79,29 +79,22 @@ impl Sitter for SitterAPI {
 
 #[derive(Error, Debug)]
 pub enum ServerError {
-    #[error("bad address")]
-    BadAddress(#[from] std::net::AddrParseError),
-
     #[error("unknown tonic error")]
     TonicError(#[from] tonic::transport::Error),
 }
 
-pub async fn run_server(db: Database) -> Result<(), ServerError> {
-    let addr = "127.0.0.1:9123"
-        .parse::<SocketAddr>()
-        .map_err(ServerError::BadAddress)?;
-
+pub async fn run_server(api_address: SocketAddr, db: Database) -> Result<(), ServerError> {
     let api = SitterAPI { db };
 
     tokio::spawn(async move {
         Server::builder()
             .add_service(SitterServer::new(api))
-            .serve(addr)
+            .serve(api_address)
             .await
             .unwrap();
     });
 
-    info!(addr = "127.0.0.1:9123", "api started");
+    info!(addr = api_address.to_string(), "api started");
 
     Ok(())
 }

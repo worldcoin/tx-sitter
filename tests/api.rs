@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::time::Duration;
 
 mod proto {
@@ -9,7 +10,9 @@ mod proto {
                              // so the call inside cli_batteries will be ignored
 async fn app_starts_api() {
     let options = tx_sitter::Options {
-        command: tx_sitter::Commands::Daemon,
+        command: tx_sitter::Commands::Daemon {
+            api_address: SocketAddr::from(([127, 0, 0, 1], 9123)),
+        },
         database: tx_sitter::db::Options {
             database: url::Url::parse("sqlite::memory:").unwrap(),
             database_migrate: true,
