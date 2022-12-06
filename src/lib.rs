@@ -6,6 +6,7 @@ pub mod proto;
 pub mod types;
 
 use clap::{Parser, Subcommand};
+use std::net::SocketAddr;
 use thiserror::Error;
 use tracing::error;
 
@@ -21,7 +22,10 @@ pub struct Options {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     // start the api, connect to upstreams, the primary mode
-    Daemon,
+    Daemon {
+        #[clap(long, env, default_value = "127.0.0.1:9123")]
+        api_address: SocketAddr,
+    },
 }
 
 #[derive(Error, Debug)]
@@ -33,8 +37,10 @@ pub enum AppError {
     StartServer(#[from] api::ServerError),
 }
 
-async fn daemon(db: db::Database) -> Result<(), AppError> {
-    api::run_server(db).await.map_err(AppError::StartServer)?;
+async fn daemon(api_address: SocketAddr, db: db::Database) -> Result<(), AppError> {
+    api::run_server(api_address, db)
+        .await
+        .map_err(AppError::StartServer)?;
 
     cli_batteries::await_shutdown().await;
 
@@ -47,7 +53,7 @@ pub async fn app(options: Options) -> Result<(), AppError> {
         .map_err(AppError::Connect)?;
 
     match options.command {
-        Commands::Daemon => daemon(database).await?,
+        Commands::Daemon { api_address } => daemon(api_address, database).await?,
     }
     Ok(())
 }
