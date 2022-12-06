@@ -9,6 +9,7 @@ use ethers_core::abi::ethereum_types::{FromDecStrErr, FromStrRadixErr};
 use std::str::FromStr;
 use thiserror::Error;
 
+#[allow(clippy::all)]
 pub mod sitter {
     tonic::include_proto!("sitter_v1");
 }
