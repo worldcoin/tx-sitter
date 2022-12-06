@@ -279,9 +279,9 @@ dependencies = [
 
 [[package]]
 name = "cli-batteries"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2770af60483d64b353b799209bada38f8b48d2005d9d290c48a39021d8cac023"
+checksum = "e757bfd4ef769cd311a6d99962670b9cf32045ab6bebc9e6771b5dbe26ea5b78"
 dependencies = [
  "ansi_term",
  "chrono",
