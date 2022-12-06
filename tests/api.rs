@@ -1,23 +1,4 @@
-use assert_cmd::prelude::*;
-use predicates::prelude::*;
-use std::process::Command;
-
 use std::time::Duration;
-
-#[test]
-fn must_provide_connection_string() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("tx-sitter")?;
-
-    cmd.arg("daemon");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "required arguments were not provided",
-        ))
-        .stderr(predicate::str::contains("CONNECTION_STRING"));
-
-    Ok(())
-}
 
 mod proto {
     tonic::include_proto!("sitter_v1");
@@ -29,7 +10,11 @@ mod proto {
 async fn app_starts_api() {
     let options = tx_sitter::Options {
         command: tx_sitter::Commands::Daemon,
-        connection_string: "sqlite://:memory:".to_owned(),
+        database: tx_sitter::db::Options {
+            database: url::Url::parse("sqlite::memory:").unwrap(),
+            database_migrate: true,
+            database_max_connections: 10,
+        },
     };
 
     assert!(!logs_contain("started"));

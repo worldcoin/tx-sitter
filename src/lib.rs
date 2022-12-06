@@ -14,8 +14,8 @@ pub struct Options {
     #[command(subcommand)]
     pub command: Commands,
 
-    #[arg(env = "SITTER_CONNECTION_STRING")]
-    pub connection_string: String,
+    #[clap(flatten)]
+    pub database: db::Options,
 }
 
 #[derive(Debug, Subcommand)]
@@ -26,10 +26,10 @@ pub enum Commands {
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("cannot connect to database")]
-    Connect(#[from] sqlx::Error),
+    #[error("cannot connect to database: {0}")]
+    Connect(#[from] anyhow::Error),
 
-    #[error("cannot start server")]
+    #[error("cannot start server: {0}")]
     StartServer(#[from] api::ServerError),
 }
 
@@ -42,25 +42,9 @@ async fn daemon(db: db::Database) -> Result<(), AppError> {
 }
 
 pub async fn app(options: Options) -> Result<(), AppError> {
-    let database = db::Database::connect(&options.connection_string)
+    let database = db::Database::new(options.database)
         .await
         .map_err(AppError::Connect)?;
-
-    use db::MigrationStatus::*;
-    match database.migration_status().await? {
-        Dirty => {
-            error!("database is is an inconsistent migration state");
-            return Ok(());
-        }
-        Empty | Behind => {
-            database.migrate().await?;
-        }
-        Current => {}
-        Ahead => {
-            error!("tx-sitter must be updated to use this database");
-            return Ok(());
-        }
-    };
 
     match options.command {
         Commands::Daemon => daemon(database).await?,
