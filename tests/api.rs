@@ -1,11 +1,8 @@
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
-use jsonrpsee::core::client::ClientT;
-use jsonrpsee::rpc_params;
 use std::time::Duration;
-use tokio::io::AsyncBufReadExt;
 
 #[test]
 fn must_provide_connection_string() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,6 +17,10 @@ fn must_provide_connection_string() -> Result<(), Box<dyn std::error::Error>> {
         .stderr(predicate::str::contains("CONNECTION_STRING"));
 
     Ok(())
+}
+
+mod proto {
+    tonic::include_proto!("sitter_v1");
 }
 
 #[tokio::test]
@@ -42,17 +43,15 @@ async fn app_starts_api() {
     tokio::time::sleep(Duration::from_secs(1)).await;
     assert!(logs_contain("api started"));
 
-    let client = jsonrpsee::ws_client::WsClientBuilder::default()
-        .build("ws://localhost:9123")
+    use proto::sitter_client::SitterClient;
+    let mut client = SitterClient::connect("http://localhost:9123")
         .await
         .unwrap();
 
-    assert!(client.is_connected());
-
-    let res: String = client.request("sitter_hi", rpc_params![]).await.unwrap();
-    assert_eq!("hi", res);
+    let request = tonic::Request::new(proto::StatusRequest {});
+    let _response = client.status(request).await.unwrap();
 
     cli_batteries::shutdown();
-    app.await;
+    app.await.unwrap();
     cli_batteries::reset_shutdown(); // clean up so the next test can run
 }

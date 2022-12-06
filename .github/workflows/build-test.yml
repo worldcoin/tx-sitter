@@ -19,6 +19,11 @@ jobs:
           profile: minimal
           toolchain: stable
           components: rustfmt, clippy
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.20.3'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         with:
@@ -52,6 +57,11 @@ jobs:
           profile: minimal
           toolchain: stable
           components: rustfmt, clippy
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.20.3'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         with:
