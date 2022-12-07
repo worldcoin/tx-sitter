@@ -3,10 +3,13 @@
 pub mod api;
 pub mod db;
 pub mod proto;
+pub mod submitter;
+pub mod transport;
 pub mod types;
 
 use clap::{Parser, Subcommand};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use thiserror::Error;
 use tracing::error;
 
@@ -35,12 +38,19 @@ pub enum AppError {
 
     #[error("cannot start server: {0}")]
     StartServer(#[from] api::ServerError),
+
+    #[error("cannot start submitter: {0}")]
+    StartSubmitter(anyhow::Error),
 }
 
 async fn daemon(api_address: SocketAddr, db: db::Database) -> Result<(), AppError> {
-    api::run_server(api_address, db)
-        .await
+    let db = Arc::new(db);
+
+    api::run_server(api_address, db.clone()).await
         .map_err(AppError::StartServer)?;
+
+    submitter::run_submitter(db).await
+        .map_err(AppError::StartSubmitter)?;
 
     cli_batteries::await_shutdown().await;
 

@@ -1,5 +1,7 @@
 use ethers::types::{Bytes, H160, U256};
 
+pub type ChainId = u32; // TODO: use enum with only the supported chains
+
 #[derive(Debug, Hash, Eq, PartialEq)]
 pub enum TxSender {
     Address(H160),
@@ -22,7 +24,7 @@ pub enum Tx {
 #[derive(Debug)]
 pub struct TransactionRequest {
     // these fields uniquely identify a request
-    pub chain_id: u32,
+    pub chain_id: ChainId,
     pub sender: TxSender,
     pub tx: Tx,
 

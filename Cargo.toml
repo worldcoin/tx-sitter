@@ -12,12 +12,14 @@ tonic-build = "0.8"
 
 [dependencies]
 anyhow = "1.0.66"
+async-trait = "0.1.59"
 clap = { version = "4.0.26", features = ["derive", "env"] }
 cli-batteries = { version = "0.4.0", features = ["signals", "mock-shutdown"] }
-ethers = "1.0.2"
+ethers = { version = "1.0.2", features = ["ipc", "ws"] }
 ethers-core = "1.0.2"
 prost = "0.11"
 rustc-hex = "2.1.0"
+serde = "1.0.149"
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "sqlite",
 "any", "migrate"] }
 thiserror = "1.0.37"
