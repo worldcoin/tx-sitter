@@ -37,8 +37,7 @@ pub struct Options {
 }
 
 pub struct Database {
-    #[allow(dead_code)]
-    pool: Pool<Any>,
+    pub pool: Pool<Any>,
 }
 
 impl Database {

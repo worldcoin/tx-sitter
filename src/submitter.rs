@@ -40,8 +40,12 @@ impl Submitter {
     }
 
     pub async fn run_internal(&mut self) -> anyhow::Result<()> {
-        // first, refresh the list of upstreams
-        // let upstreams = self.db.load_upstreams().await?;
+        // first, find an unsubmitted transaction
+        let tx = self.db.find_unsubmitted_transaction().await?;
+        
+        // next, find the upstream for that chain
+
+        // finally, submit the transaction
 
         Ok(())
     }
