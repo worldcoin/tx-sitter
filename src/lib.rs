@@ -46,10 +46,12 @@ pub enum AppError {
 async fn daemon(api_address: SocketAddr, db: db::Database) -> Result<(), AppError> {
     let db = Arc::new(db);
 
-    api::run_server(api_address, db.clone()).await
+    api::run_server(api_address, db.clone())
+        .await
         .map_err(AppError::StartServer)?;
 
-    submitter::run_submitter(db).await
+    submitter::run_submitter(db)
+        .await
         .map_err(AppError::StartSubmitter)?;
 
     cli_batteries::await_shutdown().await;

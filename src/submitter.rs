@@ -3,10 +3,10 @@
  * In the future this might become an Actix actor?
  */
 
-use anyhow;
 use crate::db::Database;
 use crate::transport::Transport;
 use crate::types::ChainId;
+use anyhow;
 use ethers::providers::Provider;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -41,8 +41,8 @@ impl Submitter {
 
     pub async fn run_internal(&mut self) -> anyhow::Result<()> {
         // first, find an unsubmitted transaction
-        let tx = self.db.find_unsubmitted_transaction().await?;
-        
+        let _tx = self.db.find_unsubmitted_transaction().await?;
+
         // next, find the upstream for that chain
 
         // finally, submit the transaction

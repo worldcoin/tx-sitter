@@ -1,8 +1,3 @@
-use std::sync::Arc;
-use std::net::SocketAddr;
-use thiserror::Error;
-use tracing::info;
-use tonic::{transport::Server, Request, Response, Status};
 use crate::db::Database;
 use crate::proto::sitter::{
     self,
@@ -11,6 +6,11 @@ use crate::proto::sitter::{
     StatusRequest, StatusTransactionReply, Txid,
 };
 use crate::types::TransactionRequest;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use thiserror::Error;
+use tonic::{transport::Server, Request, Response, Status};
+use tracing::info;
 
 pub struct SitterAPI {
     #[allow(dead_code)]

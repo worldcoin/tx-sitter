@@ -5,13 +5,22 @@ CREATE TABLE upstreams (
 );
 
 CREATE TABLE signing_keys (
-	id INTEGER PRIMARY KEY
+	id INTEGER PRIMARY KEY,
+	name BLOB,
+	address BLOB,
+	CHECK(name IS NOT NULL or address IS NOT NULL)
 );
 
 CREATE TABLE insecure_keys (
 	id INTEGER PRIMARY KEY
 	           REFERENCES signing_keys(id),
 	key BLOB NOT NULL
+);
+
+CREATE TABLE kms_keys (
+	id INTEGER PRIMARY KEY
+	           REFERENCES signing_keys(id),
+	key_id BLOB NOT NULL
 );
 
 CREATE TABLE tx_requests (

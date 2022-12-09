@@ -3759,6 +3759,7 @@ dependencies = [
  "ethers-core",
  "predicates",
  "prost",
+ "rand",
  "rustc-hex",
  "serde",
  "sqlx",
