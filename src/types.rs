@@ -29,7 +29,7 @@ pub struct TransactionRequest {
     pub tx: Tx,
 
     // these fields are additional metadata which do not impact request identity
-    pub id: Option<Bytes>,
+    pub idempotency_key: Option<Bytes>,
     pub gas_limit: Option<U256>,
 }
 
