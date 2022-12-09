@@ -1,10 +1,10 @@
-use ethers::core::k256::ecdsa::SigningKey as EcdsaSigningKey;
 use ethers::core::k256::ecdsa::Error as EcdsaError;
+use ethers::core::k256::ecdsa::SigningKey as EcdsaSigningKey;
 use ethers::signers::LocalWallet;
 use ethers::signers::Signer;
 use ethers::types::H160;
-use sqlx::{Executor, Row};
 use rand::RngCore;
+use sqlx::{Executor, Row};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SigningKey {
@@ -22,7 +22,10 @@ impl SigningKey {
     pub fn new_insecure(private_key: [u8; 32]) -> Result<Self, EcdsaError> {
         let key = EcdsaSigningKey::from_bytes(&private_key)?;
         let address = LocalWallet::from(key).address();
-        Ok(Self::Insecure { address, private_key })
+        Ok(Self::Insecure {
+            address,
+            private_key,
+        })
     }
 
     pub fn new_random_insecure() -> Self {
@@ -50,7 +53,9 @@ impl sqlx::FromRow<'_, sqlx::any::AnyRow> for SigningKey {
         let key_id: Option<String> = row.try_get("kms_key_id")?;
 
         // TODO: use proper errors here
-        let address: [u8; 20] = address.try_into().expect("address blob had incorrect length");
+        let address: [u8; 20] = address
+            .try_into()
+            .expect("address blob had incorrect length");
         let address: H160 = address.into();
 
         let private_key: Option<[u8; 32]> = private_key.map(|inner| {
@@ -60,7 +65,10 @@ impl sqlx::FromRow<'_, sqlx::any::AnyRow> for SigningKey {
         });
 
         match (private_key, key_id) {
-            (Some(private_key), None) => Ok(Self::Insecure { address, private_key }),
+            (Some(private_key), None) => Ok(Self::Insecure {
+                address,
+                private_key,
+            }),
             (None, Some(key_id)) => Ok(Self::AwsKms { address, key_id }),
             (None, None) => panic!("SigningKey row must be hydrated with a special query"),
             (Some(_), Some(_)) => panic!("SigningKey row must be hydrated with a special query"),
@@ -69,10 +77,18 @@ impl sqlx::FromRow<'_, sqlx::any::AnyRow> for SigningKey {
 }
 
 impl super::Database {
-    pub async fn insert_signing_key_with_name<S: Into<String>>(&self, key: &SigningKey, name: S) -> Result<(), sqlx::Error> {
+    pub async fn insert_signing_key_with_name<S: Into<String>>(
+        &self,
+        key: &SigningKey,
+        name: S,
+    ) -> Result<(), sqlx::Error> {
         match key {
-            SigningKey::Insecure { address, private_key } => {
-                self.insert_insecure_key_with_name(address, private_key, Some(name.into())).await?;
+            SigningKey::Insecure {
+                address,
+                private_key,
+            } => {
+                self.insert_insecure_key_with_name(address, private_key, Some(name.into()))
+                    .await?;
             }
             SigningKey::AwsKms { .. } => {
                 unimplemented!()
@@ -83,7 +99,10 @@ impl super::Database {
 
     pub async fn insert_signing_key(&self, key: &SigningKey) -> Result<(), sqlx::Error> {
         match key {
-            SigningKey::Insecure { address, private_key } => {
+            SigningKey::Insecure {
+                address,
+                private_key,
+            } => {
                 self.insert_insecure_key(address, private_key).await?;
             }
             SigningKey::AwsKms { .. } => {
@@ -93,7 +112,10 @@ impl super::Database {
         Ok(())
     }
 
-    pub async fn find_key_for_address(&self, address: &H160) -> Result<Option<SigningKey>, sqlx::Error> {
+    pub async fn find_key_for_address(
+        &self,
+        address: &H160,
+    ) -> Result<Option<SigningKey>, sqlx::Error> {
         sqlx::query_as::<_, SigningKey>(
             r#"
             SELECT 
@@ -105,9 +127,10 @@ impl super::Database {
              LEFT OUTER JOIN kms_keys ON signing_keys.id = kms_keys.id
             WHERE address = $1
             "#,
-        ).bind(address.to_fixed_bytes().to_vec())
-         .fetch_optional(&self.inner.pool)
-         .await
+        )
+        .bind(address.to_fixed_bytes().to_vec())
+        .fetch_optional(&self.inner.pool)
+        .await
     }
 
     pub async fn find_key_for_name(&self, name: &str) -> Result<Option<SigningKey>, sqlx::Error> {
@@ -122,9 +145,10 @@ impl super::Database {
              LEFT OUTER JOIN kms_keys ON signing_keys.id = kms_keys.id
             WHERE name = $1
             "#,
-        ).bind(name)
-         .fetch_optional(&self.inner.pool)
-         .await
+        )
+        .bind(name)
+        .fetch_optional(&self.inner.pool)
+        .await
     }
 
     // re our return type of i32:
@@ -187,7 +211,8 @@ impl super::Database {
         address: &H160,
         private_key: &[u8; 32],
     ) -> Result<(), sqlx::Error> {
-        self.insert_insecure_key_with_name(address, private_key, None).await
+        self.insert_insecure_key_with_name(address, private_key, None)
+            .await
     }
 }
 

@@ -41,7 +41,7 @@ CREATE TABLE tx_requests (
 	receiver BLOB,  -- NULL for Deploy
 
 	-- for Call this becomes "calldata", for Deploy this becomes "initcode"
-	data BLOB NOT NULL
+	data BLOB NOT NULL,
 
 	-- blob because SQLite has no other type which can handle 256 bit integers,
 	-- this is encoded in big-endian
