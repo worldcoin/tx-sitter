@@ -89,7 +89,7 @@ impl super::Database {
     pub async fn insert_transaction_request(&self, req: &TransactionRequest) -> Result<(), Error> {
         let signing_key = self.sender_to_key(&req.sender).await?;
         let signing_key_id = signing_key
-            .ok_or(Error::NoSuchSender(req.sender.clone()))?
+            .ok_or_else(|| Error::NoSuchSender(req.sender.clone()))?
             .id;
 
         let query = sqlx::query::<sqlx::Any>(
@@ -108,7 +108,7 @@ impl super::Database {
             )
             "#,
         )
-        .bind(req.idempotency_key.as_ref().map(|x| db::bytes_to_blob(x)))
+        .bind(req.idempotency_key.as_ref().map(db::bytes_to_blob))
         .bind(req.chain_id as i64) // sqlx::Any does not accept u32
         .bind(signing_key_id);
 
@@ -130,7 +130,7 @@ impl super::Database {
         };
 
         query
-            .bind(req.gas_limit.as_ref().map(|x| db::u256_to_blob(x)))
+            .bind(req.gas_limit.as_ref().map(db::u256_to_blob))
             .execute(&self.inner.pool)
             .await?;
 

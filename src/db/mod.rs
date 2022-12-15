@@ -47,7 +47,7 @@ fn read_u256_option(row: &sqlx::any::AnyRow, column: &str) -> sqlx::Result<Optio
     let bytes = <&[u8] as sqlx::Decode<sqlx::Any>>::decode(value).map_err(sqlx::Error::Decode)?;
 
     // [ref:u256_encoded_big_endian]
-    Ok(Some(U256::from_big_endian(&bytes)))
+    Ok(Some(U256::from_big_endian(bytes)))
 }
 
 fn read_u256(row: &sqlx::any::AnyRow, column: &str) -> sqlx::Result<U256> {

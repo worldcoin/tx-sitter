@@ -18,7 +18,7 @@ impl From<&str> for TxSender {
 
 impl From<&H160> for TxSender {
     fn from(address: &H160) -> Self {
-        Self::Address(address.clone())
+        Self::Address(*address)
     }
 }
 
