@@ -125,7 +125,7 @@ impl TryFrom<sitter::SendTransactionRequest> for types::TransactionRequest {
             gas_limit,
             sender,
             tx,
-            id: req.id.map(|x| x.into()), // Option<Vec<u8> -> ethers::types::Bytes>
+            idempotency_key: req.idempotency_key.map(|x| x.into()), // Option<Vec<u8> -> ethers::types::Bytes>
         })
     }
 }

@@ -54,9 +54,9 @@ message SendTransactionRequest {
 		TxDeploy deploy = 5;
 	}
 
-	// enables idempotent sends, clients must not use multiple ids for the same
-	// transaction, even if the client reoobts
-	optional bytes id = 6;
+	// clients must not use multiple ids for the same transaction,
+	// this key should even survive client reboots!
+	optional bytes idempotency_key = 6;
 
 	// how much gas should the transaction spend before it REVERTs? the client is in
 	// the best position to estimate this but if this value is not provided tx-sitter

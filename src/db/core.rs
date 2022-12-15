@@ -36,9 +36,19 @@ pub struct Options {
     pub database_max_connections: u32,
 }
 
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            // [tag:default_database_in_memory] our tests rely upon this default value
+            database: Url::parse("sqlite::memory:").unwrap(),
+            database_migrate: true,
+            database_max_connections: 10,
+        }
+    }
+}
+
 pub struct Database {
-    #[allow(dead_code)]
-    pool: Pool<Any>,
+    pub pool: Pool<Any>,
 }
 
 impl Database {
