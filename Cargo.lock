@@ -103,6 +103,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_matches"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
+
+[[package]]
 name = "async-stream"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1271,6 +1277,26 @@ checksum = "4c2b6b5a29c02cdc822728b7d7b8ae1bab3e3b05d44522770ddd49722eeac7eb"
 dependencies = [
  "indenter",
  "once_cell",
+]
+
+[[package]]
+name = "factori"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ff6b50917609e530c145de1c6aa8df9c38c40562375e8aa5eeaaf6c737a0b31"
+dependencies = [
+ "factori-impl",
+]
+
+[[package]]
+name = "factori-impl"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d6344ded92b0a4a1d90a816632f7ff2a12e01401d325d6295810dacca1dbdd6"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -3751,12 +3777,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
+ "assert_matches",
  "async-trait",
  "clap",
  "cli-batteries",
  "duct",
  "ethers",
  "ethers-core",
+ "factori",
  "predicates",
  "prost",
  "rand",

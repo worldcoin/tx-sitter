@@ -1,3 +1,5 @@
+use super::{address_to_blob, read_address};
+use crate::types::TxSender;
 use ethers::core::k256::ecdsa::Error as EcdsaError;
 use ethers::core::k256::ecdsa::SigningKey as EcdsaSigningKey;
 use ethers::signers::LocalWallet;
@@ -16,6 +18,18 @@ pub enum SigningKey {
         address: H160,
         key_id: String,
     },
+}
+
+#[derive(Debug, PartialEq, Eq, sqlx::FromRow)]
+pub struct SigningKeyWithId {
+    // u32 is the correct type (postgres INTEGERs are 4 bytes) but it does not impl sqlx::Type<Any>.
+    // cross-checking https://docs.rs/sqlx/latest/sqlx/sqlite/types/
+    //        against https://docs.rs/sqlx/latest/sqlx/postgres/types/
+    // reveals i32 is the common type for INTEGER columns
+    pub id: i32,
+
+    #[sqlx(flatten)]
+    pub key: SigningKey,
 }
 
 impl SigningKey {
@@ -47,16 +61,10 @@ impl SigningKey {
 }
 
 impl sqlx::FromRow<'_, sqlx::any::AnyRow> for SigningKey {
-    fn from_row(row: &sqlx::any::AnyRow) -> Result<Self, sqlx::Error> {
-        let address: &[u8] = row.try_get("address")?;
+    fn from_row(row: &sqlx::any::AnyRow) -> sqlx::Result<Self> {
+        let address: H160 = read_address(row, "address")?;
         let private_key: Option<&[u8]> = row.try_get("insecure_key")?;
         let key_id: Option<String> = row.try_get("kms_key_id")?;
-
-        // TODO: use proper errors here
-        let address: [u8; 20] = address
-            .try_into()
-            .expect("address blob had incorrect length");
-        let address: H160 = address.into();
 
         let private_key: Option<[u8; 32]> = private_key.map(|inner| {
             inner
@@ -76,6 +84,7 @@ impl sqlx::FromRow<'_, sqlx::any::AnyRow> for SigningKey {
     }
 }
 
+// public methods
 impl super::Database {
     pub async fn insert_signing_key_with_name<S: Into<String>>(
         &self,
@@ -112,50 +121,56 @@ impl super::Database {
         Ok(())
     }
 
-    pub async fn find_key_for_address(
+    pub async fn find_key_for_sender(
         &self,
-        address: &H160,
+        sender: &TxSender,
     ) -> Result<Option<SigningKey>, sqlx::Error> {
-        sqlx::query_as::<_, SigningKey>(
-            r#"
+        // the database id is an implementation detail
+        self.sender_to_key(sender)
+            .await // Result<Option<SigningKey, sqlx::Error>>
+            .map(|key_with_id| key_with_id.map(|key_with_id| key_with_id.key))
+    }
+}
+
+// internal methods
+impl super::Database {
+    pub(super) async fn sender_to_key(
+        &self,
+        sender: &TxSender,
+    ) -> Result<Option<SigningKeyWithId>, sqlx::Error> {
+        // sqlx::QueryBuilder should make this logic a little simpler but we cannot use it until
+        // this bug is fixed: https://github.com/launchbadge/sqlx/issues/1978
+
+        let mut query = r#"
             SELECT 
+              signing_keys.id AS id,
               address,
               insecure_keys.key AS insecure_key,
               kms_keys.key_id AS kms_key_id
             FROM signing_keys
              LEFT OUTER JOIN insecure_keys ON signing_keys.id = insecure_keys.id
              LEFT OUTER JOIN kms_keys ON signing_keys.id = kms_keys.id
-            WHERE address = $1
-            "#,
-        )
-        .bind(address.to_fixed_bytes().to_vec())
-        .fetch_optional(&self.inner.pool)
-        .await
+             "#
+        .to_owned();
+
+        match sender {
+            TxSender::Address(..) => {
+                query.push_str("WHERE address = $1");
+            }
+            TxSender::Named(..) => {
+                query.push_str("WHERE name = $1");
+            }
+        }
+
+        let query = sqlx::query_as::<_, SigningKeyWithId>(&query);
+        let query = match sender {
+            TxSender::Address(address) => query.bind(address_to_blob(address)),
+            TxSender::Named(name) => query.bind(name),
+        };
+
+        query.fetch_optional(&self.inner.pool).await
     }
 
-    pub async fn find_key_for_name(&self, name: &str) -> Result<Option<SigningKey>, sqlx::Error> {
-        sqlx::query_as::<_, SigningKey>(
-            r#"
-            SELECT 
-              address,
-              insecure_keys.key AS insecure_key,
-              kms_keys.key_id AS kms_key_id
-            FROM signing_keys
-             LEFT OUTER JOIN insecure_keys ON signing_keys.id = insecure_keys.id
-             LEFT OUTER JOIN kms_keys ON signing_keys.id = kms_keys.id
-            WHERE name = $1
-            "#,
-        )
-        .bind(name)
-        .fetch_optional(&self.inner.pool)
-        .await
-    }
-
-    // re our return type of i32:
-    //   u32 is the correct type (postgres INTEGERs are 4 bytes) but it does not impl sqlx::Type<Any>.
-    //   cross-checking https://docs.rs/sqlx/latest/sqlx/sqlite/types/
-    //          against https://docs.rs/sqlx/latest/sqlx/postgres/types/
-    //   reveals i32 is the common type for INTEGER columns
     async fn new_signing_key<'a, E: Executor<'a, Database = sqlx::Any>, S: Into<Option<String>>>(
         &self,
         e: E,
@@ -170,7 +185,7 @@ impl super::Database {
             "#,
         )
         .bind(name.into())
-        .bind(address.to_fixed_bytes().to_vec())
+        .bind(address_to_blob(address))
         .fetch_one(e)
         .await?;
 
@@ -218,27 +233,33 @@ impl super::Database {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Database, Options};
+    use super::super::super::types::TxSender;
+    use super::super::test_utils::new_test_db;
     use super::SigningKey;
+    use assert_matches::assert_matches;
 
     // try to round-trip an insecure key through the database
     #[tokio::test]
     async fn insert_and_read() -> Result<(), Box<dyn std::error::Error>> {
-        let db = Database::new(Options::default()).await?;
+        let db = new_test_db().await;
         let key = SigningKey::new_random_insecure();
 
         db.insert_signing_key_with_name(&key, "name").await?;
 
-        let key2 = db.find_key_for_name("name").await?;
-        assert!(key2.is_some());
-        assert_eq!(key2.unwrap(), key);
+        let res = db.sender_to_key(&TxSender::from("name")).await?;
+        assert_matches!(res, Some(key_with_id) => {
+            assert_eq!(key_with_id.key, key);
+            assert_eq!(key_with_id.id, 1);
+        });
 
-        let key2 = db.find_key_for_address(key.address()).await?;
-        assert!(key2.is_some());
-        assert_eq!(key2.unwrap(), key);
+        let key_with_id = db.sender_to_key(&TxSender::from(key.address())).await?;
+        assert_matches!(&key_with_id, Some(key_with_id) => {
+            assert_eq!(key_with_id.key, key);
+            assert_eq!(key_with_id.id, 1);
+        });
 
-        let key2 = db.find_key_for_name("other_name").await?;
-        assert!(key2.is_none());
+        let key_with_id = db.sender_to_key(&TxSender::from("other_name")).await?;
+        assert_matches!(key_with_id, None);
 
         Ok(())
     }

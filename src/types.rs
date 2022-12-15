@@ -1,11 +1,25 @@
 use ethers::types::{Bytes, H160, U256};
 
-pub type ChainId = u32; // TODO: use enum with only the supported chains
+// TODO: use enum with only the supported chains
+//       using an enum also allows us to implement sqlx::FromRow
+pub type ChainId = u32;
 
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum TxSender {
     Address(H160),
     Named(String),
+}
+
+impl From<&str> for TxSender {
+    fn from(s: &str) -> Self {
+        Self::Named(s.to_string())
+    }
+}
+
+impl From<&H160> for TxSender {
+    fn from(address: &H160) -> Self {
+        Self::Address(address.clone())
+    }
 }
 
 #[derive(Debug, Hash, Eq, PartialEq)]

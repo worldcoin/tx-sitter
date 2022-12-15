@@ -39,7 +39,7 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
-            // our tests use and rely upon this default value
+            // [tag:default_database_in_memory] our tests rely upon this default value
             database: Url::parse("sqlite::memory:").unwrap(),
             database_migrate: true,
             database_max_connections: 10,
