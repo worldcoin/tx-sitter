@@ -51,9 +51,8 @@ fn read_u256_option(row: &sqlx::any::AnyRow, column: &str) -> sqlx::Result<Optio
 }
 
 fn read_u256(row: &sqlx::any::AnyRow, column: &str) -> sqlx::Result<U256> {
-    read_u256_option(row, column)?.ok_or_else(|| {
-        sqlx::Error::Decode(format!("column {} was null", column).into())
-    })
+    read_u256_option(row, column)?
+        .ok_or_else(|| sqlx::Error::Decode(format!("column {} was null", column).into()))
 }
 
 fn address_to_blob(address: &H160) -> Vec<u8> {
@@ -88,9 +87,8 @@ fn read_bytes_option(row: &sqlx::any::AnyRow, column: &str) -> sqlx::Result<Opti
 }
 
 fn read_bytes(row: &sqlx::any::AnyRow, column: &str) -> sqlx::Result<Bytes> {
-    read_bytes_option(row, column)?.ok_or_else(|| {
-        sqlx::Error::Decode(format!("column {} was null", column).into())
-    })
+    read_bytes_option(row, column)?
+        .ok_or_else(|| sqlx::Error::Decode(format!("column {} was null", column).into()))
 }
 
 #[cfg(test)]
