@@ -16,7 +16,7 @@ jsonrpsee = { version = "0.16.0", features = ["server", "client"] }
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "sqlite",
 "any", "migrate"] }
 thiserror = "1.0.37"
-tokio = { version = "1.21.2", features = ["process", "io-util", "time"] }
+tokio = { version = "1.25.1", features = ["process", "io-util", "time"] }
 tracing = "0.1.37"
 
 [dev-dependencies]
