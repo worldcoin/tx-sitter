@@ -12,7 +12,7 @@ cli-batteries = "0.4.0"
 [dependencies]
 clap = { version = "4.0.29", features = ["derive", "env"] }
 cli-batteries = { version = "0.4.0", features = ["signals", "mock-shutdown"] }
-jsonrpsee = { version = "0.16.0", features = ["server", "client"] }
+jsonrpsee = { version = "0.19.0", features = ["server", "client"] }
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "sqlite",
 "any", "migrate"] }
 thiserror = "1.0.37"
